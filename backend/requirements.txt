@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pandas
+scikit-learn
+joblib
+python-dotenv
+motor
+python-jose
+email-validator
+bcrypt==4.0.1
+passlib[bcrypt]==1.7.4
