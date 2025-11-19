@@ -3,6 +3,7 @@ import Dashboard from "./pages/Dashboard";
 import History from "./pages/History";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
+import DailyWellness from "./pages/DailyWellness";
 import ProtectedRoute from "./components/protectedRoute"
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/daily-wellness" element={<DailyWellness />} />
       </Routes>
     </Router>
   );
