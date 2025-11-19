@@ -1,78 +1,125 @@
-from fastapi import APIRouter, Depends
-from fastapi import HTTPException
-from schemas import WellnessInput, UserOut
+from fastapi import APIRouter, Depends, HTTPException
+from schemas import WellnessInput
 from auth_utils import get_current_user
 import joblib
-import pandas as pd
+import numpy as np
 from db import wellness_collection
+from datetime import datetime
+from bson import ObjectId
 
-router = APIRouter()
+router = APIRouter(prefix="/wellness", tags=["Wellness"])
 
 score_model = joblib.load("wellness_score_model.pkl")
 class_model = joblib.load("wellness_classifier.pkl")
 
-healthy_foods = ["banana", "milk", "oats", "dal", "roti", "sabzi", "fruit salad",
-                 "egg", "sprouts", "khichdi", "curd"]
+healthy_keywords = [
+    "dal", "roti", "sabzi", "milk", "oats", "banana", "fruit",
+    "salad", "egg", "sprouts", "curd", "khichdi", "vegetable"
+]
 
-unhealthy_foods = ["chips", "pizza", "burger", "fries", "chocolate", "ice cream",
-                   "noodles", "samosa", "pakoda"]
+junk_keywords = [
+    "pizza", "burger", "fries", "chips", "momos", "cake", "pastry",
+    "chocolate", "samosa", "fried", "bhature", "noodles"
+]
 
-mood_map = {"happy": 2, "neutral": 1, "sad": 0, "stressed": -1, "angry": -2}
+sugar_keywords = [
+    "mango", "cake", "pastry", "sweets", "dessert", "chocolate", "ice cream"
+]
 
-def score_food(text):
+disease_penalty = {
+    "none": 0,
+    "diabetes": 10,
+    "asthma": 5,
+    "obesity": 8,
+    "anemia": 7
+}
+
+mood_map = {"happy": 3, "neutral": 0, "sad": -3, "stressed": -5, "angry": -4}
+
+def score_food(text: str):
     text = text.lower()
     score = 0
-    score += sum(i in text for i in healthy_foods) * 2
-    score -= sum(i in text for i in unhealthy_foods) * 2
+
+    for w in healthy_keywords:
+        if w in text:
+            score += 3
+
+    for w in junk_keywords:
+        if w in text:
+            score -= 4
+
+    for w in sugar_keywords:
+        if w in text:
+            score -= 5
+
     return score
 
+
 def convert_to_features(data: WellnessInput):
-    food_score = (
-        score_food(data.breakfast)
-        + score_food(data.lunch)
-        + score_food(data.dinner)
-        + score_food(data.snacks)
+    all_food = (
+        data.breakfast + " "
+        + data.lunch + " "
+        + data.dinner + " "
+        + data.snacks
     )
 
+    food_score = score_food(all_food)
+
+    disease_flag = disease_penalty.get(data.disease.lower(), 5)
     mood_val = mood_map.get(data.mood.lower(), 0)
-    disease_flag = 0 if data.disease.lower() == "none" else 1
 
     return [
         data.age,
         data.height_cm,
+        float(data.sleep_hours),
+        float(data.exercise_hours),
+        float(data.water_intake_liters),
         disease_flag,
+        mood_val,
         food_score,
-        data.sleep_hours,
-        data.exercise_hours,
-        data.water_intake_liters,
-        mood_val
     ]
 
-@router.post("/wellness/predict")
-async def predict_wellness(data: WellnessInput, user: UserOut = Depends(get_current_user)):
+@router.post("/predict")
+async def predict_wellness(data: WellnessInput, user=Depends(get_current_user)):
 
-    features = convert_to_features(data)
+    features = np.array(convert_to_features(data)).reshape(1, -1)
 
-    score = int(score_model.predict([features])[0])
-    category = class_model.predict([features])[0]
+    score = float(score_model.predict(features)[0])
+    category = str(class_model.predict(features)[0])
 
     entry = {
-    "user_id": user["id"],
-    "input": data.dict(),
-    "score": score,
-    "category": category
-}
+        "user_id": str(user["id"]),
+        "input": data.dict(),
+        "score": round(score, 2),
+        "category": category,
+        "created_at": datetime.utcnow().isoformat()
+    }
 
     await wellness_collection.insert_one(entry)
 
+    recommendations = [
+        "Maintain balanced meals throughout the day.",
+        "Stay hydrated and drink water regularly.",
+        "Try including fruits & vegetables in daily meals.",
+        "Get proper sleep to improve overall wellness.",
+        "Perform 20-30 minutes of physical activity daily."
+    ]
+
     return {
-        "wellness_score": score,
-        "wellness_category": category
+        "wellness_score": round(score, 2),
+        "prediction": category,
+        "recommendations": recommendations
     }
 
-@router.get("/wellness/history")
-async def get_history(user: UserOut = Depends(get_current_user)):
-    records = await wellness_collection.find({"user_id": user["id"]}).to_list(None)
+@router.get("/history")
+async def get_history(user=Depends(get_current_user)):
+    user_id = str(user["id"])
+
+    records = await wellness_collection.find(
+        {"user_id": user["id"]}
+    ).sort("created_at", -1).to_list(None)
+
     for r in records:
         r["_id"] = str(r["_id"])
+
     return records
