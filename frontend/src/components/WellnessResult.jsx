@@ -10,7 +10,7 @@ export default function WellnessResult({ result, onBack }) {
       </p>
 
       <p className="mb-2">
-        <b>Status:</b> {result.prediction}
+        <b>Status:</b> {result.wellness_category}
       </p>
 
       <button
