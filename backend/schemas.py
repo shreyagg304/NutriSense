@@ -50,6 +50,8 @@ class WellnessInput(BaseModel):
     dinner: str
     snacks: str
     sleep_hours: float
+    sleep_start: str     
+    sleep_end: str      
     exercise_hours: float
     water_intake_liters: float
     mood: str
