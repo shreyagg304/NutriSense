@@ -4,6 +4,7 @@ import joblib
 
 from routes.auth import router as auth_router
 from routes.predict import router as predict_router
+from routes.wellness import router as wellness_router
 
 app = FastAPI(
     title="NutriSense API",
@@ -27,6 +28,7 @@ enc2 = joblib.load("label_encoder_model2.pkl")
 
 app.include_router(auth_router)
 app.include_router(predict_router)
+app.include_router(wellness_router)
 
 @app.get("/")
 def root():
