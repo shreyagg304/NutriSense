@@ -1,65 +1,48 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime, timezone
 import pickle
 import os
-from datetime import datetime
 
-# Mongo (optional)
-from db import wellness_collection  # only if you created this; I'll explain below
+from db import get_db
+from schemas import WellnessIn, WellnessOut
+from auth_utils import get_current_user
 
-router = APIRouter()
+router = APIRouter(prefix="/api", tags=["Wellness"])
 
-
-# -------------------------------
-# Load ML Models
-# -------------------------------
+# --------------------------------------------------------
+# Load ML models
+# --------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 MODEL_SCORE = os.path.join(BASE_DIR, "../wellness_score_model.pkl")
 MODEL_CLASS = os.path.join(BASE_DIR, "../wellness_classifier.pkl")
 
 try:
     score_model = pickle.load(open(MODEL_SCORE, "rb"))
     classifier_model = pickle.load(open(MODEL_CLASS, "rb"))
-except Exception as e:
-    print("❌ ERROR LOADING MODELS:", e)
+except:
+    print("❌ ERROR: Could not load wellness models")
     score_model = None
     classifier_model = None
 
 
-# -------------------------------
-# Input Schema
-# -------------------------------
-class WellnessInput(BaseModel):
-    age: int
-    height_cm: float
-    disease: str
-    breakfast: str
-    lunch: str
-    dinner: str
-    snacks: str
-    sleep_hours: float
-    sleep_start: str
-    sleep_end: str
-    exercise_hours: float
-    water_intake_liters: float
-    mood: str
-    notes: str = ""
-
-
-# -------------------------------
+# --------------------------------------------------------
 # Feature Engineering
-# -------------------------------
-healthy_foods = ["banana", "milk", "oats", "dal", "roti", "sabzi", "fruit salad", "egg", "sprouts", "khichdi", "curd"]
-unhealthy_foods = ["chips", "pizza", "burger", "fries", "chocolate", "ice cream", "noodles", "samosa", "pakoda"]
+# --------------------------------------------------------
+healthy_foods = ["banana", "milk", "oats", "dal", "roti", "sabzi",
+                 "fruit salad", "egg", "sprouts", "khichdi", "curd"]
+
+unhealthy_foods = ["chips", "pizza", "burger", "fries", "chocolate",
+                   "ice cream", "noodles", "samosa", "pakoda"]
+
 mood_map = {"happy": 2, "neutral": 1, "sad": 0, "stressed": -1, "angry": -2}
 
 def score_food(text):
-    t = str(text).lower()
+    content = str(text).lower()
     score = 0
-    score += sum(w in t for w in healthy_foods) * 2
-    score -= sum(w in t for w in unhealthy_foods) * 2
+    score += sum(w in content for w in healthy_foods) * 2
+    score -= sum(w in content for w in unhealthy_foods) * 2
     return score
-
 
 def convert_to_features(data):
     food_score = (
@@ -69,11 +52,8 @@ def convert_to_features(data):
         + score_food(data["snacks"])
     )
 
-    mood = str(data["mood"]).lower().strip()
-    mood_val = mood_map.get(mood, 0)
-
-    disease = str(data["disease"]).lower()
-    disease_flag = 0 if disease == "none" else 1
+    mood_val = mood_map.get(str(data["mood"]).lower(), 0)
+    disease_flag = 0 if data["disease"].lower() == "none" else 1
 
     features = [
         data["age"],
@@ -89,58 +69,86 @@ def convert_to_features(data):
     return features
 
 
-# -------------------------------
-# Recommendation Logic
-# -------------------------------
+# --------------------------------------------------------
+# Recommendation Engine
+# --------------------------------------------------------
 def generate_recommendations(score, label):
     recs = []
 
     if score < 50:
-        recs.append("Improve sleep habits and aim for 7–8 hours.")
+        recs.append("Improve sleep and aim for 7–8 hours daily.")
         recs.append("Increase water intake and reduce junk food.")
-        recs.append("Try adding fruits or vegetables to meals.")
+        recs.append("Add fruits/vegetables to meals regularly.")
     elif score < 75:
-        recs.append("Good, but try to drink more water.")
-        recs.append("Maintain physical activity regularly.")
+        recs.append("Maintain balanced meals and drink more water.")
+        recs.append("Try light exercise daily.")
     else:
-        recs.append("Great wellness score! Keep the routine consistent.")
-        recs.append("Maintain balanced meals and good hydration.")
+        recs.append("Great wellness score! Maintain current routine.")
+        recs.append("Continue hydration and good sleep habits.")
 
     if label == "Poor":
-        recs.append("Health checkup recommended if low energy persists.")
+        recs.append("Consider a pediatric checkup if wellness stays low.")
     if label == "Moderate":
-        recs.append("Monitor diet closely for a week.")
+        recs.append("Monitor lifestyle habits for the next week.")
 
     return recs
 
 
-# -------------------------------
-# Main Prediction Endpoint
-# -------------------------------
-@router.post("/api/wellness")
-def predict_wellness(payload: WellnessInput):
 
-    if score_model is None or classifier_model is None:
-        raise HTTPException(status_code=500, detail="Model files missing or could not be loaded")
+# --------------------------------------------------------
+# POST /api/wellness  → Predict wellness + Save to DB
+# --------------------------------------------------------
+@router.post("/wellness", response_model=WellnessOut)
+async def wellness_predict(body: WellnessIn, current=Depends(get_current_user)):
+    if not score_model or not classifier_model:
+        raise HTTPException(status_code=500, detail="Wellness model not loaded")
 
-    data = payload.dict()
+    db = get_db()
+
+    data = body.dict()
     features = convert_to_features(data)
 
     score = float(score_model.predict([features])[0])
     label = classifier_model.predict([features])[0]
     recs = generate_recommendations(score, label)
 
-    result = {
-        "wellness_score": score,
-        "prediction": label,
-        "recommendations": recs,
-        "timestamp": datetime.utcnow()
+    doc = {
+        "user_id": current["id"],
+        "input": data,
+        "output": {
+            "wellness_score": score,
+            "prediction": label,
+            "recommendations": recs,
+        },
+        "created_at": datetime.now(timezone.utc),
     }
 
-    # Save to MongoDB (optional)
-    try:
-        wellness_collection.insert_one(result)  # Only works if you set it up below
-    except:
-        pass
+    await db.wellness_history.insert_one(doc)
 
-    return result
+    return WellnessOut(
+        wellness_score=score,
+        prediction=label,
+        recommendations=recs,
+        created_at=doc["created_at"],
+    )
+
+
+# --------------------------------------------------------
+# GET /api/wellness/history  → User wellness logs
+# --------------------------------------------------------
+@router.get("/wellness/history")
+async def wellness_history(current=Depends(get_current_user)):
+    db = get_db()
+    cursor = db.wellness_history.find({"user_id": current["id"]}).sort("created_at", -1)
+
+    items = []
+    async for doc in cursor:
+        items.append({
+            "id": str(doc["_id"]),
+            "created_at": doc["created_at"],
+            "wellness_score": doc["output"]["wellness_score"],
+            "prediction": doc["output"]["prediction"],
+            "recommendations": doc["output"]["recommendations"]
+        })
+
+    return {"items": items}
