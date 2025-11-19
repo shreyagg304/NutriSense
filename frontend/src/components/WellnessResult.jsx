@@ -13,16 +13,6 @@ export default function WellnessResult({ result, onBack }) {
         <b>Status:</b> {result.prediction}
       </p>
 
-      <h3 className="text-lg font-semibold text-green-700 mt-4">
-        Recommendations:
-      </h3>
-
-      <ul className="list-disc ml-6 mt-2 text-gray-700">
-        {result.recommendations.map((rec, i) => (
-          <li key={i}>{rec}</li>
-        ))}
-      </ul>
-
       <button
         onClick={onBack}
         className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg"
