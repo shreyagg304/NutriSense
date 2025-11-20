@@ -31,61 +31,75 @@ Chart.register(
 
 export default function DailyWellnessDashboard({ data }) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
 
-      {/* Top Two-Column Layout */}
+      {/* -------------------------------------------------- */}
+      {/* ROW 1: RADAR + LOGIC */}
+      {/* -------------------------------------------------- */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* Left side: Radar + Line */}
-        <div className="lg:col-span-2 space-y-6">
+        {/* Radar Chart */}
+        <Card title="Daily Health Radar" className="lg:col-span-2">
+          <div className="max-w-[500px] mx-auto">
+            <Radar data={radarConfig(data.dailyRadar)} />
+          </div>
+        </Card>
 
-          {/* Radar */}
-          <Card title="Daily Health Radar">
-            <div className="max-w-[500px] mx-auto">
-              <Radar data={radarConfig(data.dailyRadar)} />
-            </div>
-          </Card>
+        {/* Radar Explanation */}
+        <Card title="Radar Score Logic">
+          <RadarLogic />
+        </Card>
 
-          {/* Line Chart */}
-          <Card title="Mood & Energy (Last 14 Days)">
-            <div className="max-w-[600px] mx-auto">
-              <Line data={lineConfig(data.trends)} />
-            </div>
-          </Card>
-
-        </div>
-
-        {/* Right side: Pie + Heatmap + Growth */}
-        <div className="space-y-6">
-
-          {/* Pie Chart */}
-          <Card title="Diet Breakdown">
-            <div className="max-w-[350px] mx-auto">
-              <Pie data={pieConfig(data.dietBreakdown)} />
-            </div>
-          </Card>
-
-          {/* Heatmap */}
-          <Card title="Weekly Heatmap (Last 28 Days)">
-            <HeatmapGrid days={data.weeklyQuality} />
-          </Card>
-
-          {/* Growth */}
-          <Card title="Mini Growth Trend">
-            <ul className="text-sm">
-              {data.recentGrowth.map((g, i) => (
-                <li key={i} className="flex justify-between py-1 border-b border-gray-200">
-                  <span>{g.date}</span>
-                  <span>{g.weight} kg</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-
-        </div>
       </div>
 
-      {/* Bottom Summary */}
+      {/* -------------------------------------------------- */}
+      {/* ROW 2: LINE GRAPH + PIE CHART */}
+      {/* -------------------------------------------------- */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* Line Graph */}
+        <Card title="Mood & Energy (Last 14 Days)">
+          <div className="max-w-[600px] mx-auto">
+            <Line data={lineConfig(data.trends)} />
+          </div>
+        </Card>
+
+        {/* Pie Chart */}
+        <Card title="Diet Breakdown">
+          <div className="max-w-[350px] mx-auto">
+            <Pie data={pieConfig(data.dietBreakdown)} />
+          </div>
+        </Card>
+
+      </div>
+
+      {/* -------------------------------------------------- */}
+      {/* ROW 3: HEATMAP + HEIGHT */}
+      {/* -------------------------------------------------- */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* Weekly Heatmap */}
+        <Card title="Weekly Heatmap (Last 28 Days)">
+          <HeatmapGrid days={data.weeklyQuality} />
+        </Card>
+
+        {/* Height Trend */}
+        <Card title="Height Growth Trend (Last 3 Days)">
+          <ul className="text-sm">
+            {data.recentGrowth.map((g, i) => (
+              <li key={i} className="flex justify-between py-1 border-b border-gray-200">
+                <span>{g.date}</span>
+                <span>{g.weight} cm</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+
+      </div>
+
+      {/* -------------------------------------------------- */}
+      {/* ROW 4: MONTHLY SUMMARY */}
+      {/* -------------------------------------------------- */}
       <Card title="Monthly Summary">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Summary label="Avg Health Score" value={data.monthlySummary.avgHealthScore} />
@@ -94,16 +108,19 @@ export default function DailyWellnessDashboard({ data }) {
           <Summary label="Avg Sleep (hrs)" value={data.monthlySummary.avgSleep} />
         </div>
       </Card>
+
     </div>
   );
 }
 
-/* ------------------------ UI Components ------------------------ */
+/* -------------------------------------------------- */
+/* UI COMPONENTS */
+/* -------------------------------------------------- */
 
-function Card({ title, children }) {
+function Card({ title, children, className = "" }) {
   return (
-    <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
-      <h2 className="text-lg font-medium text-gray-700 mb-3">{title}</h2>
+    <div className={`bg-white border border-gray-300 rounded-lg p-4 shadow-sm ${className}`}>
+      <h2 className="text-lg font-medium text-gray-800 mb-3">{title}</h2>
       {children}
     </div>
   );
@@ -142,7 +159,38 @@ function HeatmapGrid({ days }) {
   );
 }
 
-/* ------------------------ Chart Configs ------------------------ */
+function RadarLogic() {
+  return (
+    <div className="text-lg space-y-4 text-gray-700">
+
+      <p><b>Diet:</b> Direct wellness score (0–100).</p>
+
+      <p>
+        <b>Sleep:</b> sleep_hours × 10  
+        <br />Example: 7 hours → 70
+      </p>
+
+      <p>
+        <b>Energy:</b> Fixed at 50 (combined metric).
+      </p>
+
+      <p>
+        <b>Activity:</b> exercise_hours × 20  
+        <br />Example: 1 hr → 20
+      </p>
+
+      <p>
+        <b>Mood:</b> Happy → 80, Neutral → 50,  
+        Sad → 30, Stressed → 20, Angry → 25
+      </p>
+
+    </div>
+  );
+}
+
+/* -------------------------------------------------- */
+/* CHART CONFIG */
+/* -------------------------------------------------- */
 
 function radarConfig(d) {
   return {

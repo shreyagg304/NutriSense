@@ -1,6 +1,7 @@
 import Navbar from "../components/Navbar";
 import { useState, useEffect } from "react";
 import api from "../api/client";
+import Footer from "../components/Footer";
 
 export default function WellnessHistory() {
   const [history, setHistory] = useState([]);
@@ -116,6 +117,8 @@ export default function WellnessHistory() {
           </div>
         )}
       </div>
+
+      <Footer />
     </div>
   );
 }

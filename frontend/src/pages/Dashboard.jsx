@@ -1,6 +1,7 @@
 import Navbar from "../components/Navbar";
 import { useState } from "react";
 import api from "../api/client";
+import Footer from "../components/Footer";
 
 export default function Dashboard() {
   const [formData, setFormData] = useState({
@@ -141,6 +142,8 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      <Footer />
     </div>
   );
 }

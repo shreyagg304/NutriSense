@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/client";
+import Footer from "../components/Footer";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -93,6 +94,8 @@ export default function Login() {
           </a>
         </p>
       </div>
+
+      <Footer />
     </div>
   );
 }

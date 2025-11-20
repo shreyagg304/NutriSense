@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import DailyWellnessDashboard from "../components/DailyWellnessDashboard";
+import Footer from "../components/Footer";
 
 export default function DailyDashboardPage() {
   const [allLogs, setAllLogs] = useState([]);
@@ -21,29 +22,25 @@ export default function DailyDashboardPage() {
             },
           }
         );
-
         const data = await res.json();
-        console.log("History API response:", data);
-
-        if (Array.isArray(data)) {
-          setAllLogs(data);
-        } else {
-          console.warn("History API did NOT return array. Setting empty list.");
-          setAllLogs([]);
-        }
+        if (Array.isArray(data)) setAllLogs(data);
+        else setAllLogs([]);
+      } catch (err) {
+        console.error("Failed to load history", err);
+        setAllLogs([]);
       } finally {
         setLoading(false);
       }
     }
-
     load();
-  }, []);
+  }, [token]);
 
-  /* ---------------- FILTER BY MONTH/YEAR USING input.date ---------------- */
+  // Filter logs by month & year (use created_at if present; fall back to input.date)
   const filtered = allLogs.filter((log) => {
-    if (!log.input?.date) return false;
-    const [y, m] = log.input.date.split("-").map(Number);
-    return y === year && m === month;
+    const dtRaw = log.created_at ?? log.input?.date;
+    if (!dtRaw) return false;
+    const d = new Date(dtRaw);
+    return d.getMonth() + 1 === month && d.getFullYear() === year;
   });
 
   const dashboardData = generateDashboardData(filtered);
@@ -52,73 +49,65 @@ export default function DailyDashboardPage() {
     <div className="min-h-screen bg-[#f9f9f9]">
       <Navbar />
 
-      <div className="max-w-5xl mx-auto p-6">
-        <h1 className="text-3xl font-bold text-green-700 text-center mb-8">
+      <div className="max-w-6xl mx-auto p-6">
+        <h1 className="text-3xl font-bold text-green-700 text-center mb-6">
           Your Monthly Dashboard
         </h1>
 
-        {/* FILTERS */}
-        <div className="flex flex-col items-center mb-10">
-          <div className="flex gap-10">
-            {/* Month */}
-            <div className="flex flex-col items-center">
-              <label className="text-sm font-medium text-gray-700 mb-1">
-                Select Month
-              </label>
-              <select
-                value={month}
-                onChange={(e) => setMonth(Number(e.target.value))}
-                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-400"
-              >
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    {i + 1}
-                  </option>
-                ))}
-              </select>
-            </div>
+        {/* Filters stay above dashboard (Option 1) */}
+        <div className="flex justify-center gap-6 mb-8">
+          <div className="flex flex-col items-center">
+            <label className="text-sm text-gray-700 mb-1">Select Month</label>
+            <select
+              value={month}
+              onChange={(e) => setMonth(Number(e.target.value))}
+              className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-400"
+            >
+              {Array.from({ length: 12 }).map((_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {i + 1}
+                </option>
+              ))}
+            </select>
+          </div>
 
-            {/* Year */}
-            <div className="flex flex-col items-center">
-              <label className="text-sm font-medium text-gray-700 mb-1">
-                Select Year
-              </label>
-              <select
-                value={year}
-                onChange={(e) => setYear(Number(e.target.value))}
-                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-400"
-              >
-                {[2024, 2025, 2026].map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="flex flex-col items-center">
+            <label className="text-sm text-gray-700 mb-1">Select Year</label>
+            <select
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value))}
+              className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-400"
+            >
+              {[2024, 2025, 2026].map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {/* CONTENT */}
+        {/* Content */}
         {loading ? (
-          <div className="text-gray-600 text-center">Loading dashboard...</div>
+          <div className="text-gray-600 text-center py-12">Loading dashboard...</div>
         ) : !dashboardData ? (
-          <div className="text-gray-600 text-center">
-            No data available for this month.
-          </div>
+          <div className="text-gray-600 text-center py-12">No data available for this month.</div>
         ) : (
-          <DailyWellnessDashboard data={dashboardData} />
+          <DailyWellnessDashboard
+            data={dashboardData}
+            selected={{ month, year }}
+          />
         )}
       </div>
+      <Footer />
     </div>
   );
 }
 
-/* -----------------------------------------------------
-   DATA PROCESSING — Updated to use input.date everywhere
-   ----------------------------------------------------- */
+/* ----------------- DATA PROCESSING ----------------- */
 
 function generateDashboardData(logs) {
-  if (!logs.length) return null;
+  if (!logs || logs.length === 0) return null;
 
   const moodMap = {
     happy: 80,
@@ -128,52 +117,50 @@ function generateDashboardData(logs) {
     angry: 25,
   };
 
-  // Latest entry by date
-  const latest = logs[0];
-  const input = latest.input;
+  // sort descending by date (so latest is first)
+  const sorted = [...logs].sort((a, b) => new Date(b.created_at ?? b.input?.date) - new Date(a.created_at ?? a.input?.date));
+  const latest = sorted[0];
+  const input = latest.input ?? {};
 
   const dailyRadar = {
-    diet: latest.score,
-    sleep: input.sleep_hours * 10,
+    diet: Math.round(latest.score ?? 50),
+    sleep: Math.round((input.sleep_hours ?? 7) * 10),
     energy: 50,
-    activity: input.exercise_hours * 20,
-    mood: moodMap[input.mood.toLowerCase()] || 50,
+    activity: Math.round((input.exercise_hours ?? 0) * 20),
+    mood: moodMap[(input.mood ?? "neutral").toLowerCase()] || 50,
   };
 
-  // Pie chart
-  const healthy = logs.filter((l) => l.category === "Healthy").length;
-  const balanced = logs.filter((l) => l.category === "Moderate").length;
-  const junk = logs.filter((l) => l.category === "Poor").length;
+  const healthy = logs.filter((l) => (l.category ?? l.prediction) === "Healthy").length;
+  const balanced = logs.filter((l) => (l.category ?? l.prediction) === "Moderate").length;
+  const junk = logs.filter((l) => (l.category ?? l.prediction) === "Poor").length;
   const dietBreakdown = { healthy, balanced, junk };
 
-  // Trends (last 14 entries)
-  const trends = logs.slice(-14).map((l) => ({
-    date: l.input.date, // ⭐ NEW
-    energy: 50,
-    mood: moodMap[l.input.mood.toLowerCase()] || 50,
+  const trends = sorted.slice(0, 14).map((l) => {
+    const d = (l.input && l.input.date) || (l.created_at ? l.created_at.slice(0, 10) : null);
+    return {
+      date: d || new Date().toISOString().slice(0, 10),
+      energy: 50,
+      mood: moodMap[((l.input && l.input.mood) || "neutral").toLowerCase()] || 50,
+    };
+  }).reverse();
+
+  const weeklyQuality = sorted.slice(0, 28).map((l) => {
+    const d = (l.input && l.input.date) || (l.created_at ? l.created_at.slice(0, 10) : null);
+    return {
+      date: d || new Date().toISOString().slice(0, 10),
+      quality:
+        (l.category ?? l.prediction) === "Healthy" ? "good" :
+        (l.category ?? l.prediction) === "Moderate" ? "mixed" : "bad",
+    };
+  }).reverse();
+
+  const recentGrowth = sorted.slice(0, 3).map((l) => ({
+    date: (l.input && l.input.date) || (l.created_at ? l.created_at.slice(0, 10) : ""),
+    height_cm: (l.input && l.input.height_cm) ?? null,
   }));
 
-  // Weekly heatmap (last 28 entries)
-  const weeklyQuality = logs.slice(-28).map((l) => ({
-    date: l.input.date, // ⭐ NEW
-    quality:
-      l.category === "Healthy"
-        ? "good"
-        : l.category === "Moderate"
-        ? "mixed"
-        : "bad",
-  }));
-
-  // Recent "growth" (first 3)
-  const recentGrowth = logs.slice(0, 3).map((l) => ({
-    date: l.input.date, // ⭐ NEW
-    weight: l.input.height_cm / 3.5,
-  }));
-
-  // Monthly summaries
-  const avgScore = logs.reduce((a, b) => a + b.score, 0) / logs.length;
-  const avgSleep =
-    logs.reduce((a, b) => a + b.input.sleep_hours, 0) / logs.length;
+  const avgScore = logs.reduce((a, b) => a + (b.score ?? 0), 0) / logs.length;
+  const avgSleep = logs.reduce((a, b) => a + ((b.input && b.input.sleep_hours) ?? 7), 0) / logs.length;
 
   const monthlySummary = {
     avgHealthScore: Math.round(avgScore),

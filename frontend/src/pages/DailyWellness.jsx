@@ -1,3 +1,4 @@
+import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 import WellnessForm from "../components/WellnessForm";
 
@@ -13,6 +14,8 @@ export default function DailyWellness() {
 
         <WellnessForm />
       </div>
+
+      <Footer />
     </div>
   );
 }
