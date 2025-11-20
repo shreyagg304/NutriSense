@@ -5,12 +5,13 @@ import Signup from "./pages/Signup";
 import Login from "./pages/Login";
 import DailyWellness from "./pages/DailyWellness";
 import ProtectedRoute from "./components/protectedRoute"
+import Home from "./pages/Home";
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
@@ -31,7 +32,15 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/daily-wellness" element={<DailyWellness />} />
+        
+        <Route
+          path="/daily-wellness"
+          element={
+            <ProtectedRoute>
+              <DailyWellness />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Router>
   );
