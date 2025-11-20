@@ -149,7 +149,7 @@ async def predict_wellness(data: WellnessInput, user=Depends(get_current_user)):
         "score": round(score, 2),
         "category": category,
         "recommendations": recommendations,
-        "created_at": datetime.utcnow().isoformat()
+        "created_at": datetime.utcnow()
     }
 
     await wellness_collection.insert_one(entry)
