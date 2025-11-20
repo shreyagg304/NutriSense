@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 
-export default function protectedRoute({ children }) {
+export default function ProtectedRoute({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(
     !!localStorage.getItem("token")
   );
@@ -17,4 +17,3 @@ export default function protectedRoute({ children }) {
 
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 }
-
