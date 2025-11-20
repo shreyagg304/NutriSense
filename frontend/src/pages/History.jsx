@@ -13,7 +13,8 @@ export default function WellnessHistory() {
         const res = await api.get("/wellness/history");
         console.log("Wellness history:", res.data);
 
-        setHistory(res.data || []);
+        // Ensure always array
+        setHistory(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
         console.error(err);
         setError("Unable to load wellness history");
@@ -53,8 +54,11 @@ export default function WellnessHistory() {
                 key={item._id}
                 className="bg-white border border-gray-200 shadow-sm rounded-xl p-6 hover:shadow-md transition-all"
               >
+                {/* ⭐ USING input.date INSTEAD OF created_at */}
                 <div className="text-sm text-gray-500 mb-2">
-                  {new Date(item.created_at).toLocaleString()}
+                  {item.input?.date
+                    ? item.input.date
+                    : "Date unavailable"}
                 </div>
 
                 <p className="text-gray-700 text-sm mb-1">

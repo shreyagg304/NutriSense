@@ -56,3 +56,4 @@ class WellnessInput(BaseModel):
     water_intake_liters: float
     mood: str
     notes: str = ""
+    date: Optional[str] = None

@@ -5,6 +5,7 @@ import joblib
 import numpy as np
 from db import wellness_collection
 from datetime import datetime
+import pytz
 
 router = APIRouter(prefix="/wellness", tags=["Wellness"])
 
@@ -35,6 +36,7 @@ disease_penalty = {
 
 mood_map = {"happy": 3, "neutral": 0, "sad": -3, "stressed": -5, "angry": -4}
 
+
 def score_food(text: str):
     text = text.lower()
     score = 0
@@ -50,6 +52,7 @@ def score_food(text: str):
             score -= 5
 
     return score
+
 
 def convert_to_features(data: WellnessInput):
     all_food = (
@@ -73,6 +76,7 @@ def convert_to_features(data: WellnessInput):
         mood_val,
         food_score
     ]
+
 
 def generate_recommendations(data: WellnessInput, score, category):
     recs = []
@@ -125,23 +129,33 @@ def generate_recommendations(data: WellnessInput, score, category):
 
     return recs
 
+
 @router.post("/predict")
 async def predict_wellness(data: WellnessInput, user=Depends(get_current_user)):
 
     features = np.array(convert_to_features(data)).reshape(1, -1)
-
     score = float(score_model.predict(features)[0])
+
     def wellness_category(score):
-     if score >= 75:
-        return "Healthy"
-     elif score >= 50:
-        return "Moderate"
-     return "Poor"
+        if score >= 75:
+            return "Healthy"
+        elif score >= 50:
+            return "Moderate"
+        return "Poor"
 
     category = wellness_category(score)
-
-
     recommendations = generate_recommendations(data, score, category)
+
+    # ⭐ Always get today's India date if user does NOT give date
+    ist = pytz.timezone("Asia/Kolkata")
+
+    if data.date:
+        try:
+            created_at = datetime.strptime(data.date, "%Y-%m-%d").replace(tzinfo=ist)
+        except:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+    else:
+        created_at = datetime.now(ist)
 
     entry = {
         "user_id": str(user["id"]),
@@ -149,7 +163,7 @@ async def predict_wellness(data: WellnessInput, user=Depends(get_current_user)):
         "score": round(score, 2),
         "category": category,
         "recommendations": recommendations,
-        "created_at": datetime.utcnow()
+        "created_at": created_at
     }
 
     await wellness_collection.insert_one(entry)
@@ -159,6 +173,7 @@ async def predict_wellness(data: WellnessInput, user=Depends(get_current_user)):
         "prediction": category,
         "recommendations": recommendations
     }
+
 
 @router.get("/history")
 async def get_history(user=Depends(get_current_user)):

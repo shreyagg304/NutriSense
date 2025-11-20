@@ -3,7 +3,10 @@ import { submitDailyWellness } from "../api/wellnessApi";
 import WellnessResult from "./WellnessResult";
 
 export default function WellnessForm() {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
   const [formData, setFormData] = useState({
+    date: today,                 // ⭐ Default today's date
     age: "",
     height_cm: "",
     disease: "",
@@ -38,7 +41,6 @@ export default function WellnessForm() {
     setResult(null);
 
     try {
-      // Convert numeric fields BEFORE sending to backend
       const numericData = {
         ...formData,
         age: Number(formData.age),
@@ -63,32 +65,56 @@ export default function WellnessForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {Object.keys(formData).map((key) => (
-        <div key={key}>
-          <label className="block font-medium text-gray-700 mb-1">
-            {key.replace(/_/g, " ").toUpperCase()}
-          </label>
 
-          {key === "notes" ? (
-            <textarea
-              name={key}
-              value={formData[key]}
-              onChange={handleChange}
-              className={inputClasses + " h-20"}
-              placeholder="Optional notes..."
-            />
-          ) : (
-            <input
-              type={key.includes("hours") || key.includes("liters") ? "number" : "text"}
-              name={key}
-              value={formData[key]}
-              onChange={handleChange}
-              className={inputClasses}
-              required={key !== "notes"}
-            />
-          )}
-        </div>
-      ))}
+      {/* ⭐ DATE FIELD */}
+      <div>
+        <label className="block font-medium text-gray-700 mb-1">DATE</label>
+        <input
+          type="date"
+          name="date"
+          value={formData.date}
+          onChange={handleChange}
+          className={inputClasses}
+          required
+        />
+      </div>
+
+      {/* Render all fields EXCEPT date */}
+      {Object.keys(formData)
+        .filter((key) => key !== "date")
+        .map((key) => (
+          <div key={key}>
+            <label className="block font-medium text-gray-700 mb-1">
+              {key.replace(/_/g, " ").toUpperCase()}
+            </label>
+
+            {key === "notes" ? (
+              <textarea
+                name={key}
+                value={formData[key]}
+                onChange={handleChange}
+                className={inputClasses + " h-20"}
+                placeholder="Optional notes..."
+              />
+            ) : (
+              <input
+                type={
+                  key.includes("hours") ||
+                  key.includes("liters") ||
+                  key === "age" ||
+                  key === "height_cm"
+                    ? "number"
+                    : "text"
+                }
+                name={key}
+                value={formData[key]}
+                onChange={handleChange}
+                className={inputClasses}
+                required={key !== "notes"}
+              />
+            )}
+          </div>
+        ))}
 
       <button
         type="submit"

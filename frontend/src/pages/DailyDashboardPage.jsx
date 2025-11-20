@@ -23,7 +23,14 @@ export default function DailyDashboardPage() {
         );
 
         const data = await res.json();
-        setAllLogs(data);
+        console.log("History API response:", data);
+
+        if (Array.isArray(data)) {
+          setAllLogs(data);
+        } else {
+          console.warn("History API did NOT return array. Setting empty list.");
+          setAllLogs([]);
+        }
       } finally {
         setLoading(false);
       }
@@ -32,29 +39,27 @@ export default function DailyDashboardPage() {
     load();
   }, []);
 
+  /* ---------------- FILTER BY MONTH/YEAR USING input.date ---------------- */
   const filtered = allLogs.filter((log) => {
-    const d = new Date(log.created_at);
-    return d.getMonth() + 1 === month && d.getFullYear() === year;
+    if (!log.input?.date) return false;
+    const [y, m] = log.input.date.split("-").map(Number);
+    return y === year && m === month;
   });
 
   const dashboardData = generateDashboardData(filtered);
 
   return (
     <div className="min-h-screen bg-[#f9f9f9]">
-      {/* NAVBAR ALWAYS VISIBLE */}
       <Navbar />
 
       <div className="max-w-5xl mx-auto p-6">
-
-        {/* CENTERED GREEN HEADING */}
         <h1 className="text-3xl font-bold text-green-700 text-center mb-8">
           Your Monthly Dashboard
         </h1>
 
-        {/* CENTERED FILTERS WITH LABELS */}
+        {/* FILTERS */}
         <div className="flex flex-col items-center mb-10">
           <div className="flex gap-10">
-
             {/* Month */}
             <div className="flex flex-col items-center">
               <label className="text-sm font-medium text-gray-700 mb-1">
@@ -90,15 +95,16 @@ export default function DailyDashboardPage() {
                 ))}
               </select>
             </div>
-
           </div>
         </div>
 
-        {/* CONTENT SECTION */}
+        {/* CONTENT */}
         {loading ? (
           <div className="text-gray-600 text-center">Loading dashboard...</div>
         ) : !dashboardData ? (
-          <div className="text-gray-600 text-center">No data available for this month.</div>
+          <div className="text-gray-600 text-center">
+            No data available for this month.
+          </div>
         ) : (
           <DailyWellnessDashboard data={dashboardData} />
         )}
@@ -107,7 +113,9 @@ export default function DailyDashboardPage() {
   );
 }
 
-/* --------------------- Data Processing --------------------- */
+/* -----------------------------------------------------
+   DATA PROCESSING — Updated to use input.date everywhere
+   ----------------------------------------------------- */
 
 function generateDashboardData(logs) {
   if (!logs.length) return null;
@@ -120,6 +128,7 @@ function generateDashboardData(logs) {
     angry: 25,
   };
 
+  // Latest entry by date
   const latest = logs[0];
   const input = latest.input;
 
@@ -131,20 +140,22 @@ function generateDashboardData(logs) {
     mood: moodMap[input.mood.toLowerCase()] || 50,
   };
 
+  // Pie chart
   const healthy = logs.filter((l) => l.category === "Healthy").length;
   const balanced = logs.filter((l) => l.category === "Moderate").length;
   const junk = logs.filter((l) => l.category === "Poor").length;
-
   const dietBreakdown = { healthy, balanced, junk };
 
+  // Trends (last 14 entries)
   const trends = logs.slice(-14).map((l) => ({
-    date: l.created_at.slice(0, 10),
+    date: l.input.date, // ⭐ NEW
     energy: 50,
     mood: moodMap[l.input.mood.toLowerCase()] || 50,
   }));
 
+  // Weekly heatmap (last 28 entries)
   const weeklyQuality = logs.slice(-28).map((l) => ({
-    date: l.created_at.slice(0, 10),
+    date: l.input.date, // ⭐ NEW
     quality:
       l.category === "Healthy"
         ? "good"
@@ -153,11 +164,13 @@ function generateDashboardData(logs) {
         : "bad",
   }));
 
+  // Recent "growth" (first 3)
   const recentGrowth = logs.slice(0, 3).map((l) => ({
-    date: l.created_at.slice(0, 10),
+    date: l.input.date, // ⭐ NEW
     weight: l.input.height_cm / 3.5,
   }));
 
+  // Monthly summaries
   const avgScore = logs.reduce((a, b) => a + b.score, 0) / logs.length;
   const avgSleep =
     logs.reduce((a, b) => a + b.input.sleep_hours, 0) / logs.length;
