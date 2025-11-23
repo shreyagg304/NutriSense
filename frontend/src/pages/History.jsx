@@ -108,10 +108,15 @@ export default function WellnessHistory() {
                 </p>
 
                 {item.input.notes && (
-                  <p className="text-gray-700 text-sm">
+                  <p className="text-gray-700 text-sm mb-2">
                     <b>Notes:</b> {item.input.notes}
                   </p>
                 )}
+
+                <p className="text-gray-700 text-sm">
+                  <b>Recommendations:</b> {item.recommendations.join(' ')}
+                </p>
+
               </div>
             ))}
           </div>

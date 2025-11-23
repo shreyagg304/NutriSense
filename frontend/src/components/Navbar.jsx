@@ -54,7 +54,7 @@ export default function Navbar() {
         {userName && (
           <div className="hidden md:flex items-center gap-6">
             <Link to="/dashboard" className={navItem}>
-              Dashboard
+              Status Prediction
             </Link>
 
             <Link to="/history" className={navItem}>
@@ -66,7 +66,7 @@ export default function Navbar() {
             </Link>
 
             <Link to="/daily-dashboard" className={navItem}>
-              Daily Dashboard
+              Dashboard
             </Link>
 
             <span className="text-gray-800 font-medium">Hi, {userName}</span>
@@ -108,7 +108,7 @@ export default function Navbar() {
           {userName ? (
             <>
               <Link to="/dashboard" className={navItem}>
-                Dashboard
+                Status Prediction
               </Link>
               <Link to="/history" className={navItem}>
                 History
@@ -117,7 +117,7 @@ export default function Navbar() {
                 Daily Wellness
               </Link>
               <Link to="/daily-dashboard" className={navItem}>
-                Daily Dashboard
+                Dashboard
               </Link>
 
               <span className="block px-3 py-2 text-gray-800 font-medium">

@@ -89,7 +89,7 @@ export default function DailyWellnessDashboard({ data }) {
             {data.recentGrowth.map((g, i) => (
               <li key={i} className="flex justify-between py-1 border-b border-gray-200">
                 <span>{g.date}</span>
-                <span>{g.weight} cm</span>
+                <span>{g.height_cm} cm</span>
               </li>
             ))}
           </ul>

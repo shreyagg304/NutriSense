@@ -14,7 +14,7 @@ export default function WellnessResult({ result, onBack }) {
       </p>
 
       <p className="mb-2">
-        <b>Recommendations:</b> {result.recommendations.join(", ")}
+        <b>Recommendations:</b> {result.recommendations.join(' ')}
       </p>
 
       <button

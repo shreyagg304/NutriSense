@@ -5,23 +5,42 @@ import WellnessResult from "./WellnessResult";
 export default function WellnessForm() {
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
+  // const [formData, setFormData] = useState({
+  //   date: today,                 // ⭐ Default today's date
+  //   age: "",
+  //   height_cm: "",
+  //   disease: "",
+  //   breakfast: "",
+  //   lunch: "",
+  //   dinner: "",
+  //   snacks: "",
+  //   sleep_hours: "",
+  //   sleep_start: "",
+  //   sleep_end: "",
+  //   exercise_hours: "",
+  //   water_intake_liters: "",
+  //   mood: "",
+  //   notes: "",
+  // });
+
   const [formData, setFormData] = useState({
-    date: today,                 // ⭐ Default today's date
-    age: "",
-    height_cm: "",
-    disease: "",
-    breakfast: "",
-    lunch: "",
-    dinner: "",
-    snacks: "",
-    sleep_hours: "",
-    sleep_start: "",
-    sleep_end: "",
-    exercise_hours: "",
-    water_intake_liters: "",
-    mood: "",
-    notes: "",
+    date : today,
+    age: 10,
+    height_cm: 125,
+    disease: "none",
+    breakfast: "milk banana oats",
+    lunch: "dal rice",
+    dinner: "roti sabzi",
+    snacks: "fruit",
+    sleep_hours: 8,
+    sleep_start: "22:00",
+    sleep_end: "06:00",
+    exercise_hours: 1,
+    water_intake_liters: 2,
+    mood: "happy",
+    notes: "test mode default values",
   });
+
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
